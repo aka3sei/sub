@@ -1,6 +1,33 @@
 import streamlit as st
+import gspread
+from google.oauth2.service_account import Credentials
+import datetime
 
-# ページ設定
+# --- 1. スプレッドシート接続設定 ---
+# [重要] あなたのスプレッドシートIDをここに貼り付けてください
+SHEET_ID = "あなたのスプレッドシートIDをここに貼り付け"
+
+def save_to_spreadsheet(data_list):
+    try:
+        # Streamlit Secretsから認証情報を取得
+        credentials_info = st.secrets["gcp_service_account"]
+        scopes = [
+            "https://www.googleapis.com/auth/spreadsheets",
+            "https://www.googleapis.com/auth/drive"
+        ]
+        credentials = Credentials.from_service_account_info(credentials_info, scopes=scopes)
+        client = gspread.authorize(credentials)
+        
+        # シートを開いて末尾に追加
+        sh = client.open_by_key(SHEET_ID)
+        worksheet = sh.get_worksheet(0)
+        worksheet.append_row(data_list)
+        return True
+    except Exception as e:
+        st.error(f"接続エラー: {e}")
+        return False
+
+# --- 2. ページ設定 ---
 st.set_page_config(page_title="営業評価シミュレーター", layout="wide")
 
 st.title("📊 営業評価・ボーナス算定シミュレーター")
@@ -39,7 +66,7 @@ with col1:
     
     avg_achieve = (s_rate + p_rate + n_rate) / 3
     b_score = avg_achieve * 0.6
-    st.metric("数値評価スコア (60%)", f"{b_score:.2%}") # 小数第二位
+    st.metric("数値評価スコア (60%)", f"{b_score:.2%}")
 
 # スライダー関数
 def eval_slider(label, key, default=1.0, is_posture=False):
@@ -55,7 +82,7 @@ with col2:
     c4 = eval_slider("顧客対応", "c4")
     c_avg = (c1 + c2 + c3 + c4) / 4
     c_score = c_avg * 0.25
-    st.metric("行動評価スコア (25%)", f"{c_score:.2%}") # 小数第二位
+    st.metric("行動評価スコア (25%)", f"{c_score:.2%}")
 
 # 【D】姿勢・貢献度 (15%)
 with col3:
@@ -66,7 +93,7 @@ with col3:
     d4 = eval_slider("会社方針理解", "d4", is_posture=True)
     d_avg = (d1 + d2 + d3 + d4) / 4
     d_score = d_avg * 0.15
-    st.metric("姿勢評価スコア (15%)", f"{d_score:.2%}") # 小数第二位
+    st.metric("姿勢評価スコア (15%)", f"{d_score:.2%}")
 
 st.divider()
 
@@ -74,7 +101,8 @@ st.divider()
 res_col1, res_col2 = st.columns([1, 2])
 
 with res_col1:
-    st.header("【G】最終調整")
+    st.header("🏠 【G】最終調整")
+    st.caption("賃料予測 (Rent Forecast) 等を考慮した係数")
     adjust_factor = st.slider("チーム調整係数", 0.80, 1.20, 1.00, 0.01)
 
 with res_col2:
@@ -86,7 +114,6 @@ with res_col2:
     
     r1, r2 = st.columns(2)
     r1.metric("最終支給額", f"¥{final_amount:,}")
-    # 合計支給率と調整前支給率を小数点第二位まで表示
     r2.metric("合計支給率", f"{total_rate:.2%}", delta=f"調整前 {final_rate:.2%}", delta_color="off")
 
 st.divider()
@@ -95,18 +122,31 @@ st.divider()
 st.header("📝 【H】評価コメント・フィードバック")
 feedback = st.text_area("フィードバック内容を入力してください", height=100)
 
+# --- 記録ボタンの処理 ---
 if st.button("評価内容をスプレッドシートに記録する", type="primary"):
-    save_data = {
-        "氏名": name,
-        "期間": eval_period,
-        "数値得点": f"{b_score:.2%}",
-        "行動得点": f"{c_score:.2%}",
-        "姿勢得点": f"{d_score:.2%}",
-        "調整前支給率": f"{final_rate:.2%}",
-        "最終支給率": f"{total_rate:.2%}",
-        "最終支給額": final_amount,
-        "係数": adjust_factor,
-        "コメント": feedback
-    }
-    st.success(f"スプレッドシートに {name} さんのデータを記録しました。")
-    st.table([save_data])
+    # スプレッドシートのA1〜L1の列順にリストを作成
+    current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+    
+    row_to_add = [
+        current_time,          # A: 記録日時
+        name,                  # B: 氏名
+        eval_period,           # C: 評価期間
+        monthly_salary,        # D: 月給
+        f"{b_score:.2%}",      # E: 数値評価(60%)
+        f"{c_score:.2%}",      # F: 行動評価(25%)
+        f"{d_score:.2%}",      # G: 姿勢評価(15%)
+        f"{final_rate:.2%}",   # H: 調整前支給率
+        adjust_factor,         # I: 調整係数
+        f"{total_rate:.2%}",   # J: 最終支給率
+        final_amount,          # K: 最終支給額
+        feedback               # L: 評価コメント
+    ]
+    
+    if save_to_spreadsheet(row_to_add):
+        st.success(f"スプレッドシートに {name} さんのデータを記録しました！")
+        st.balloons()
+        # 記録した内容をプレビュー表示
+        st.table({
+            "項目": ["氏名", "期間", "最終支給率", "最終支給額"],
+            "内容": [name, eval_period, f"{total_rate:.2%}", f"¥{final_amount:,}"]
+        })
