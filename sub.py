@@ -39,7 +39,7 @@ with col1:
     
     avg_achieve = (s_rate + p_rate + n_rate) / 3
     b_score = avg_achieve * 0.6
-    st.metric("数値評価スコア (60%)", f"{b_score:.4%}") # 精度を高く表示
+    st.metric("数値評価スコア (60%)", f"{b_score:.2%}") # 小数第二位
 
 # スライダー関数
 def eval_slider(label, key, default=1.0, is_posture=False):
@@ -55,7 +55,7 @@ with col2:
     c4 = eval_slider("顧客対応", "c4")
     c_avg = (c1 + c2 + c3 + c4) / 4
     c_score = c_avg * 0.25
-    st.metric("行動評価スコア (25%)", f"{c_score:.4%}")
+    st.metric("行動評価スコア (25%)", f"{c_score:.2%}") # 小数第二位
 
 # 【D】姿勢・貢献度 (15%)
 with col3:
@@ -66,7 +66,7 @@ with col3:
     d4 = eval_slider("会社方針理解", "d4", is_posture=True)
     d_avg = (d1 + d2 + d3 + d4) / 4
     d_score = d_avg * 0.15
-    st.metric("姿勢評価スコア (15%)", f"{d_score:.4%}")
+    st.metric("姿勢評価スコア (15%)", f"{d_score:.2%}") # 小数第二位
 
 st.divider()
 
@@ -86,7 +86,7 @@ with res_col2:
     
     r1, r2 = st.columns(2)
     r1.metric("最終支給額", f"¥{final_amount:,}")
-    # ↓ 調整前支給率を四捨五入せず詳細に表示（.1% -> .2% またはそれ以上）
+    # 合計支給率と調整前支給率を小数点第二位まで表示
     r2.metric("合計支給率", f"{total_rate:.2%}", delta=f"調整前 {final_rate:.2%}", delta_color="off")
 
 st.divider()
@@ -99,14 +99,14 @@ if st.button("評価内容をスプレッドシートに記録する", type="pri
     save_data = {
         "氏名": name,
         "期間": eval_period,
-        "数値得点": f"{b_score:.4%}",
-        "行動得点": f"{c_score:.4%}",
-        "姿勢得点": f"{d_score:.4%}",
-        "調整前支給率": f"{final_rate:.4%}", # 記録用も詳細に
-        "最終支給率": f"{total_rate:.4%}",
+        "数値得点": f"{b_score:.2%}",
+        "行動得点": f"{c_score:.2%}",
+        "姿勢得点": f"{d_score:.2%}",
+        "調整前支給率": f"{final_rate:.2%}",
+        "最終支給率": f"{total_rate:.2%}",
         "最終支給額": final_amount,
         "係数": adjust_factor,
         "コメント": feedback
     }
-    st.success(f"スプレッドシートに {name} さんの詳細データを記録しました。")
+    st.success(f"スプレッドシートに {name} さんのデータを記録しました。")
     st.table([save_data])
