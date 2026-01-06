@@ -5,7 +5,7 @@ import datetime
 
 # --- 1. スプレッドシート接続設定 ---
 # [重要] あなたのスプレッドシートIDをここに貼り付けてください
-SHEET_ID = "あなたのスプレッドシートIDをここに貼り付け"
+SHEET_ID = "1o2-2qsWfM0HKlWdKGe-7PCvuOWNsTWfAcE1KBs29ABU"
 
 def save_to_spreadsheet(data_list):
     try:
@@ -150,3 +150,4 @@ if st.button("評価内容をスプレッドシートに記録する", type="pri
             "項目": ["氏名", "期間", "最終支給率", "最終支給額"],
             "内容": [name, eval_period, f"{total_rate:.2%}", f"¥{final_amount:,}"]
         })
+
