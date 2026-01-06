@@ -4,7 +4,6 @@ import streamlit as st
 st.set_page_config(page_title="営業評価シミュレーター", layout="wide")
 
 st.title("📊 営業評価・ボーナス算定シミュレーター")
-st.caption("全ての評価項目を反映し、スプレッドシートへの記録機能を搭載した完全版です。")
 
 # --- 【A】基本情報 ---
 st.subheader("【A】基本情報")
@@ -26,24 +25,23 @@ col1, col2, col3 = st.columns(3)
 # 【B】数値評価 (60%)
 with col1:
     st.header("【B】数値評価 (60%)")
-    # 売上高
     s_target = st.number_input("売上目標 (万円)", value=1000, key="st")
     s_actual = st.number_input("売上実績 (万円)", value=900, key="sa")
     s_rate = (s_actual / s_target) if s_target > 0 else 0
-    # 粗利
+    
     p_target = st.number_input("粗利目標 (万円)", value=300, key="pt")
     p_actual = st.number_input("粗利実績 (万円)", value=310, key="pa")
     p_rate = (p_actual / p_target) if p_target > 0 else 0
-    # 新規契約件数
+    
     n_target = st.number_input("新規目標 (件)", value=10, key="nt")
     n_actual = st.number_input("新規実績 (件)", value=8, key="na")
     n_rate = (n_actual / n_target) if n_target > 0 else 0
     
     avg_achieve = (s_rate + p_rate + n_rate) / 3
     b_score = avg_achieve * 0.6
-    st.metric("数値評価スコア (60%)", f"{b_score:.2%}")
+    st.metric("数値評価スコア (60%)", f"{b_score:.4%}") # 精度を高く表示
 
-# スライダー生成関数（再定義）
+# スライダー関数
 def eval_slider(label, key, default=1.0, is_posture=False):
     max_val = 1.0 if is_posture else 1.2
     return st.slider(label, 0.5, max_val, default, 0.1, key=key)
@@ -51,28 +49,24 @@ def eval_slider(label, key, default=1.0, is_posture=False):
 # 【C】行動評価 (25%)
 with col2:
     st.header("【C】行動評価 (25%)")
-    st.caption("S=1.2 / A=1.0 / B=0.8 / C=0.5")
     c1 = eval_slider("商談・提案活動", "c1")
     c2 = eval_slider("CRM・報告", "c2")
     c3 = eval_slider("案件管理", "c3")
     c4 = eval_slider("顧客対応", "c4")
-    
     c_avg = (c1 + c2 + c3 + c4) / 4
     c_score = c_avg * 0.25
-    st.metric("行動評価スコア (25%)", f"{c_score:.2%}")
+    st.metric("行動評価スコア (25%)", f"{c_score:.4%}")
 
 # 【D】姿勢・貢献度 (15%)
 with col3:
     st.header("【D】姿勢・貢献度 (15%)")
-    st.caption("A=1.0 / B=0.8 / C=0.5")
     d1 = eval_slider("チーム貢献", "d1", is_posture=True)
     d2 = eval_slider("勤怠・規律", "d2", is_posture=True)
     d3 = eval_slider("業務改善", "d3", is_posture=True)
     d4 = eval_slider("会社方針理解", "d4", is_posture=True)
-    
     d_avg = (d1 + d2 + d3 + d4) / 4
     d_score = d_avg * 0.15
-    st.metric("姿勢評価スコア (15%)", f"{d_score:.2%}")
+    st.metric("姿勢評価スコア (15%)", f"{d_score:.4%}")
 
 st.divider()
 
@@ -82,7 +76,6 @@ res_col1, res_col2 = st.columns([1, 2])
 with res_col1:
     st.header("【G】最終調整")
     adjust_factor = st.slider("チーム調整係数", 0.80, 1.20, 1.00, 0.01)
-    st.info(f"係数: {adjust_factor:.2f}")
 
 with res_col2:
     st.header("💰 算定結果")
@@ -93,7 +86,8 @@ with res_col2:
     
     r1, r2 = st.columns(2)
     r1.metric("最終支給額", f"¥{final_amount:,}")
-    r2.metric("合計支給率", f"{total_rate:.2%}", delta=f"調整前 {final_rate:.1%}")
+    # ↓ 調整前支給率を四捨五入せず詳細に表示（.1% -> .2% またはそれ以上）
+    r2.metric("合計支給率", f"{total_rate:.2%}", delta=f"調整前 {final_rate:.2%}", delta_color="off")
 
 st.divider()
 
@@ -101,23 +95,18 @@ st.divider()
 st.header("📝 【H】評価コメント・フィードバック")
 feedback = st.text_area("フィードバック内容を入力してください", height=100)
 
-# --- スプレッドシート記録ボタン ---
 if st.button("評価内容をスプレッドシートに記録する", type="primary"):
-    # 保存用データセット
     save_data = {
         "氏名": name,
         "期間": eval_period,
-        "数値得点": f"{b_score:.2%}",
-        "行動得点": f"{c_score:.2%}",
-        "姿勢得点": f"{d_score:.2%}",
-        "支給率": f"{total_rate:.2%}",
+        "数値得点": f"{b_score:.4%}",
+        "行動得点": f"{c_score:.4%}",
+        "姿勢得点": f"{d_score:.4%}",
+        "調整前支給率": f"{final_rate:.4%}", # 記録用も詳細に
+        "最終支給率": f"{total_rate:.4%}",
         "最終支給額": final_amount,
         "係数": adjust_factor,
         "コメント": feedback
     }
-    
-    # ここにAPI連携の関数を呼び出す（設定済み前提）
-    # save_to_google_sheets(save_data)
-    
-    st.success(f"スプレッドシートに {name} さんのデータを記録しました！")
-    st.table([save_data]) # 記録内容をプレビュー表示
+    st.success(f"スプレッドシートに {name} さんの詳細データを記録しました。")
+    st.table([save_data])
